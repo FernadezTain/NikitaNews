@@ -845,12 +845,45 @@
         });
       }
 
+      function closeUnclosedTelegramTags(value) {
+        let html = String(value || '');
+        const allowedTags = ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'blockquote', 'code', 'a'];
+
+        for (const tag of allowedTags) {
+          const startTagRegex = new RegExp(`<${tag}(?:\\s[^>]*)?>`, 'gi');
+          const endTagRegex = new RegExp(`</${tag}>`, 'gi');
+          const startCount = (html.match(startTagRegex) || []).length;
+          const endCount = (html.match(endTagRegex) || []).length;
+
+          if (startCount > endCount) {
+            html += '</' + tag + '>'.repeat(startCount - endCount);
+          }
+        }
+
+        return html;
+      }
+
+      function stripTelegramHtml(value) {
+        return String(value || '')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/&amp;/gi, '&')
+          .replace(/&lt;/gi, '<')
+          .replace(/&gt;/gi, '>')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      }
+
       function normalizeRichText(rawText) {
         if (!rawText) return '';
 
         let value = String(rawText)
           .replace(/\r\n/g, '\n')
           .replace(/\r/g, '\n');
+
+        value = value.replace(/<br\s*\/?>/gi, '\n');
 
         value = value.replace(/<postlink:\s*text\s*=\s*([^;]+?)\s*;\s*link\s*=\s*([^>]+?)\s*>/gi, (_, text, url) => {
           const label = String(text).trim();
@@ -863,7 +896,8 @@
           return `<a href="${cleanUrl}">${cleanUrl}</a>`;
         });
 
-        value = value.replace(/<(?!\/?(?:b|strong|i|em|u|s|del|blockquote|code|a|br)\b)[^>]+>/gi, '');
+        value = value.replace(/<(?!\/?(?:b|strong|i|em|u|s|del|blockquote|code|a)\b)[^>]+>/gi, '');
+        value = closeUnclosedTelegramTags(value);
         return value;
       }
 
@@ -885,6 +919,89 @@
         return blocks.join('\n\n');
       }
 
+      function splitTelegramMessage(text) {
+        const maxLength = 3000;
+        const source = String(text || '').trim();
+
+        if (!source) {
+          return [];
+        }
+
+        if (source.length <= maxLength) {
+          return [closeUnclosedTelegramTags(source)];
+        }
+
+        const chunks = [];
+        let current = source;
+
+        while (current.length > maxLength) {
+          let cut = current.lastIndexOf(' ', maxLength);
+          if (cut <= 0) {
+            cut = maxLength;
+          }
+
+          let part = current.slice(0, cut).trim();
+          if (!part) {
+            break;
+          }
+
+          const openTagMatch = part.match(/<([a-z0-9]+)(?:\s[^>]*)?>$/i);
+          const closeTagMatch = part.match(/<\/([a-z0-9]+)>$/i);
+
+          if (openTagMatch && !closeTagMatch) {
+            const tagName = openTagMatch[1].toLowerCase();
+            const tagToClose = `</${tagName}>`;
+            part = `${part}${tagToClose}`;
+          }
+
+          const plainText = part.replace(/<[^>]+>/g, '');
+          if (!plainText.trim()) {
+            const fallback = current.slice(0, Math.min(current.length, maxLength)).trim();
+            chunks.push(closeUnclosedTelegramTags(fallback));
+            current = current.slice(Math.min(current.length, maxLength)).trim();
+            continue;
+          }
+
+          chunks.push(closeUnclosedTelegramTags(part));
+          current = current.slice(cut).trim();
+        }
+
+        if (current.trim()) {
+          chunks.push(closeUnclosedTelegramTags(current.trim()));
+        }
+
+        return chunks.filter(Boolean);
+      }
+
+      async function sendSingleTelegramChunk(chatId, messageText, preferHtml = true) {
+        const rawBody = {
+          chat_id: Number(chatId) || chatId,
+          text: messageText,
+          disable_web_page_preview: true,
+        };
+
+        if (preferHtml) {
+          rawBody.parse_mode = 'HTML';
+        }
+
+        const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rawBody),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          return {
+            ok: false,
+            description: result.description || 'Telegram request failed',
+          };
+        }
+
+        return { ok: true };
+      }
+
       async function sendTelegramMessage(post) {
         if (!telegramBotToken || telegramBotToken === 'YOUR_TELEGRAM_BOT_TOKEN') {
           throw new Error('Не указан Telegram bot token. Вставь токен в переменную telegramBotToken в index.html.');
@@ -897,22 +1014,27 @@
         }
 
         const payloadText = buildTelegramText(post);
+        const telegramChunks = splitTelegramMessage(payloadText);
 
         for (const chatId of chatIds) {
-          const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: Number(chatId) || chatId,
-              text: payloadText,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true,
-            }),
-          });
+          for (let index = 0; index < telegramChunks.length; index += 1) {
+            const chunk = telegramChunks[index];
+            const isNotLast = index < telegramChunks.length - 1;
+            const messageText = isNotLast ? `${chunk}\n\n...` : chunk;
 
-          const result = await response.json();
-          if (!response.ok || !result.ok) {
-            throw new Error(result.description || `Не удалось отправить в чат ${chatId}`);
+            const htmlResult = await sendSingleTelegramChunk(chatId, messageText, true);
+
+            if (!htmlResult.ok) {
+              const fallbackText = stripTelegramHtml(messageText);
+              if (!fallbackText) {
+                throw new Error(`Не удалось отправить в чат ${chatId}: ${htmlResult.description}`);
+              }
+
+              const fallbackResult = await sendSingleTelegramChunk(chatId, fallbackText, false);
+              if (!fallbackResult.ok) {
+                throw new Error(`Не удалось отправить в чат ${chatId}: ${fallbackResult.description}`);
+              }
+            }
           }
         }
       }
@@ -1032,6 +1154,12 @@
         return String(value || '').trim();
       }
 
+      function shortenText(value, maxLength = 140) {
+        const text = String(value || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        if (!text) return 'Пустое содержимое';
+        return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text;
+      }
+
       function renderPosts(posts) {
         window.__postsCache = posts || [];
         postCount.textContent = posts.length + ' постов';
@@ -1051,7 +1179,7 @@
             <h3>${post.title || 'Без заголовка'}</h3>
             <p class="subtitle">${post.subtitle || 'Без подзаголовка'}</p>
             <p class="meta">${post.scheduled_at ? formatMoscowDate(post.scheduled_at) : 'Время не указано'} · ${post.chat_ids || 'Чаты не указаны'}</p>
-            <div class="preview">${post.content || 'Пустое содержимое'}</div>
+            <div class="preview">${shortenText(post.content, 160)}</div>
 
             <div class="actions">
               <button class="mini-button send" type="button" data-id="${post.id}" data-action="send">Отправить сейчас</button>
