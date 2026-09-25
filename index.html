@@ -466,7 +466,7 @@
     <script>
       const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
       const supabaseKey = 'YOUR_ANON_KEY';
-      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+      const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
       const postsList = document.getElementById('posts-list');
       const postCount = document.getElementById('post-count');
@@ -513,7 +513,12 @@
             const action = button.dataset.action;
 
             if (action === 'delete') {
-              const { error } = await supabase.from('posts').delete().eq('id', id);
+              if (!supabaseClient) {
+                showError('Supabase не подключён');
+                return;
+              }
+
+              const { error } = await supabaseClient.from('posts').delete().eq('id', id);
               if (error) {
                 showError('Ошибка удаления: ' + error.message);
                 return;
@@ -522,7 +527,12 @@
             }
 
             if (action === 'send') {
-              const { error } = await supabase.from('posts').update({ status: 'pending', scheduled_at: new Date().toISOString() }).eq('id', id);
+              if (!supabaseClient) {
+                showError('Supabase не подключён');
+                return;
+              }
+
+              const { error } = await supabaseClient.from('posts').update({ status: 'pending', scheduled_at: new Date().toISOString() }).eq('id', id);
               if (error) {
                 showError('Ошибка отправки: ' + error.message);
                 return;
@@ -531,7 +541,12 @@
             }
 
             if (action === 'edit') {
-              const { data, error } = await supabase.from('posts').select('*').eq('id', id).single();
+              if (!supabaseClient) {
+                showError('Supabase не подключён');
+                return;
+              }
+
+              const { data, error } = await supabaseClient.from('posts').select('*').eq('id', id).single();
               if (error || !data) {
                 showError('Пост не найден');
                 return;
@@ -554,7 +569,12 @@
       }
 
       async function loadPosts() {
-        const { data, error } = await supabase.from('posts').select('*').order('scheduled_at', { ascending: true });
+        if (!supabaseClient) {
+          postsList.innerHTML = '<div class="empty-state">Supabase не подключён. Проверь URL и anon key.</div>';
+          return;
+        }
+
+        const { data, error } = await supabaseClient.from('posts').select('*').order('scheduled_at', { ascending: true });
 
         if (error) {
           postsList.innerHTML = '<div class="empty-state">Ошибка загрузки из Supabase: ' + error.message + '</div>';
@@ -566,6 +586,11 @@
 
       document.getElementById('editor-form').addEventListener('submit', async function (event) {
         event.preventDefault();
+
+        if (!supabaseClient) {
+          showError('Supabase не подключён. Проверь URL и anon key.');
+          return;
+        }
 
         const type_name = normalizeText(document.getElementById('type_name').value);
         const title = normalizeText(document.getElementById('title').value);
@@ -594,7 +619,7 @@
               : null
         };
 
-        const { error } = await supabase.from('posts').insert([payload]);
+        const { error } = await supabaseClient.from('posts').insert([payload]);
 
         if (error) {
           showError('Ошибка сохранения в Supabase: ' + error.message);
