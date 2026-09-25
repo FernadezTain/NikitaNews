@@ -792,10 +792,10 @@
         const selected = textarea.value.slice(start, end) || 'текст';
 
         if (tag === 'br') {
-          const value = textarea.value.slice(0, start) + '<br>' + textarea.value.slice(end);
+          const value = textarea.value.slice(0, start) + '\n' + textarea.value.slice(end);
           textarea.value = value;
           textarea.focus();
-          const cursorPos = start + 4;
+          const cursorPos = start + 1;
           textarea.setSelectionRange(cursorPos, cursorPos);
           return;
         }
@@ -838,9 +838,9 @@
             event.preventDefault();
             const start = contentTextarea.selectionStart;
             const end = contentTextarea.selectionEnd;
-            const value = contentTextarea.value.slice(0, start) + '<br>' + contentTextarea.value.slice(end);
+            const value = contentTextarea.value.slice(0, start) + '\n' + contentTextarea.value.slice(end);
             contentTextarea.value = value;
-            contentTextarea.setSelectionRange(start + 4, start + 4);
+            contentTextarea.setSelectionRange(start + 1, start + 1);
           }
         });
       }
@@ -850,7 +850,7 @@
 
         let value = String(rawText)
           .replace(/\r\n/g, '\n')
-          .replace(/\n/g, '<br>');
+          .replace(/\r/g, '\n');
 
         value = value.replace(/<postlink:\s*text\s*=\s*([^;]+?)\s*;\s*link\s*=\s*([^>]+?)\s*>/gi, (_, text, url) => {
           const label = String(text).trim();
@@ -863,6 +863,7 @@
           return `<a href="${cleanUrl}">${cleanUrl}</a>`;
         });
 
+        value = value.replace(/<(?!\/?(?:b|strong|i|em|u|s|del|blockquote|code|a|br)\b)[^>]+>/gi, '');
         return value;
       }
 
