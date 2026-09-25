@@ -658,7 +658,7 @@
                 <button type="button" class="format-button" data-tag="link">Ссылка</button>
                 <button type="button" class="format-button" data-tag="br">Новая строка</button>
               </div>
-              <textarea id="content" rows="8" placeholder="Текст поста... Можно писать: <b>жирный</b>, <i>курсив</i>, <link:=https://example.com>, <blockquote>цитата</blockquote>"></textarea>
+              <textarea id="content" rows="8" placeholder="Текст поста... Можно писать: <b>жирный</b>, <i>курсив</i>, <postlink:text=мой сайт;link=https://example.com>, <blockquote>цитата</blockquote>"></textarea>
             </label>
 
             <div class="button-row">
@@ -851,6 +851,12 @@
         let value = String(rawText)
           .replace(/\r\n/g, '\n')
           .replace(/\n/g, '<br>');
+
+        value = value.replace(/<postlink:\s*text\s*=\s*([^;]+?)\s*;\s*link\s*=\s*([^>]+?)\s*>/gi, (_, text, url) => {
+          const label = String(text).trim();
+          const cleanUrl = String(url).trim();
+          return `<a href="${cleanUrl}">${label || cleanUrl}</a>`;
+        });
 
         value = value.replace(/<link:\s*=?\s*([^>]+)>/gi, (_, url) => {
           const cleanUrl = String(url).trim();
