@@ -133,6 +133,12 @@
         box-shadow: var(--shadow);
         overflow: hidden;
         backdrop-filter: blur(12px);
+        animation: panelFloat 0.7s ease both;
+      }
+
+      @keyframes panelFloat {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: translateY(0); }
       }
 
       .panel-header {
@@ -234,8 +240,36 @@
       }
 
       .primary-button:hover {
-        transform: translateY(-2px);
+        transform: translateY(-2px) scale(1.01);
         box-shadow: 0 24px 42px rgba(117, 185, 255, 0.32);
+      }
+
+      .topbar {
+        animation: fadeSlide 0.6s ease both;
+      }
+
+      @keyframes fadeSlide {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .chip, .status-pill, .badge {
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .chip:hover, .status-pill:hover, .badge:hover {
+        transform: translateY(-1px);
+        border-color: rgba(117, 185, 255, 0.4);
+      }
+
+      .post-card {
+        transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+      }
+
+      .post-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(117, 185, 255, 0.32);
+        box-shadow: 0 20px 36px rgba(0, 0, 0, 0.18);
       }
 
       .post-list {
@@ -471,6 +505,75 @@
       const postsList = document.getElementById('posts-list');
       const postCount = document.getElementById('post-count');
 
+      function getMoscowOffsetMinutes(date) {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Europe/Moscow',
+          timeZoneName: 'shortOffset',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        });
+
+        const tzName = fmt.formatToParts(date).find((part) => part.type === 'timeZoneName')?.value || 'GMT+3';
+        const match = tzName.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/i);
+
+        if (!match) {
+          return 180;
+        }
+
+        const sign = match[1] === '-' ? -1 : 1;
+        const hours = Number(match[2] || 0);
+        const minutes = Number(match[3] || 0);
+        return sign * (hours * 60 + minutes);
+      }
+
+      function toMoscowIso(dateString, timeString) {
+        if (!dateString || !timeString) {
+          return null;
+        }
+
+        const [year, month, day] = dateString.split('-').map(Number);
+        const [hours, minutes] = timeString.split(':').map(Number);
+        const utcCandidate = Date.UTC(year, month - 1, day, hours, minutes, 0, 0);
+        const offsetMinutes = getMoscowOffsetMinutes(new Date(utcCandidate));
+        return new Date(utcCandidate - offsetMinutes * 60000).toISOString();
+      }
+
+      function formatMoscowDate(value) {
+        if (!value) return 'Время не указано';
+        return new Date(value).toLocaleString('ru-RU', {
+          timeZone: 'Europe/Moscow',
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        });
+      }
+
+      function formatMoscowInputDate(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        return new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'Europe/Moscow',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(date).replace(/\-/g, '-');
+      }
+
+      function formatMoscowInputTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        return new Intl.DateTimeFormat('ru-RU', {
+          timeZone: 'Europe/Moscow',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(date);
+      }
+
       function showError(message) {
         alert(message);
       }
@@ -496,7 +599,7 @@
 
             <h3>${post.title || 'Без заголовка'}</h3>
             <p class="subtitle">${post.subtitle || 'Без подзаголовка'}</p>
-            <p class="meta">${post.scheduled_at ? new Date(post.scheduled_at).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }) : 'Время не указано'} · ${post.chat_ids || 'Чаты не указаны'}</p>
+            <p class="meta">${post.scheduled_at ? formatMoscowDate(post.scheduled_at) : 'Время не указано'} · ${post.chat_ids || 'Чаты не указаны'}</p>
             <p class="preview">${post.content || 'Пустое содержимое'}</p>
 
             <div class="actions">
@@ -559,9 +662,8 @@
               document.getElementById('chat_ids').value = data.chat_ids || '';
 
               if (data.scheduled_at) {
-                const dt = new Date(data.scheduled_at);
-                document.getElementById('send_date').value = dt.toISOString().slice(0, 10);
-                document.getElementById('send_time').value = dt.toISOString().slice(11, 16);
+                document.getElementById('send_date').value = formatMoscowInputDate(data.scheduled_at);
+                document.getElementById('send_time').value = formatMoscowInputTime(data.scheduled_at);
               }
             }
           });
@@ -613,9 +715,9 @@
           chat_ids,
           status: send_date || send_time ? 'pending' : 'draft',
           scheduled_at: send_date && send_time
-            ? new Date(`${send_date}T${send_time}`).toISOString()
+            ? toMoscowIso(send_date, send_time)
             : send_date
-              ? new Date(`${send_date}T09:00:00`).toISOString()
+              ? toMoscowIso(send_date, '09:00')
               : null
         };
 
