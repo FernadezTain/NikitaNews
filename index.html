@@ -559,6 +559,44 @@
         }
       }
 
+      async function processDuePosts() {
+        if (!supabaseClient) {
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        const { data, error } = await supabaseClient
+          .from('posts')
+          .select('*')
+          .lt('scheduled_at', nowIso)
+          .in('status', ['pending', 'draft'])
+          .order('scheduled_at', { ascending: true });
+
+        if (error) {
+          console.error('Ошибка проверки очереди:', error.message);
+          return;
+        }
+
+        for (const post of data || []) {
+          try {
+            await sendTelegramMessage(post);
+
+            const { error: updateError } = await supabaseClient
+              .from('posts')
+              .update({ status: 'sent', sent_at: new Date().toISOString() })
+              .eq('id', post.id);
+
+            if (updateError) {
+              console.error('Ошибка обновления статуса:', updateError.message);
+            }
+          } catch (sendError) {
+            console.error('Автоотправка не удалась:', sendError.message);
+          }
+        }
+
+        await loadPosts();
+      }
+
       function getMoscowOffsetMinutes(date) {
         const fmt = new Intl.DateTimeFormat('en-US', {
           timeZone: 'Europe/Moscow',
@@ -801,9 +839,12 @@
 
         event.target.reset();
         await loadPosts();
+        await processDuePosts();
       });
 
       loadPosts();
+      processDuePosts();
+      setInterval(processDuePosts, 30000);
     </script>
   </body>
 </html>
