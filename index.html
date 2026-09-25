@@ -86,11 +86,117 @@
         padding: 28px 22px 54px;
       }
 
+      .hidden {
+        display: none !important;
+      }
+
+      .auth-screen {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(117, 185, 255, 0.2), transparent 22%),
+          radial-gradient(circle at 75% 25%, rgba(141, 120, 255, 0.18), transparent 26%),
+          linear-gradient(180deg, #070d15 0%, #0a111b 100%);
+      }
+
+      .auth-card {
+        width: min(420px, 100%);
+        background: rgba(13, 21, 30, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        box-shadow: var(--shadow);
+        padding: 28px 24px 22px;
+      }
+
+      .auth-card h2 {
+        margin: 0 0 10px;
+        font-size: 2rem;
+        letter-spacing: -0.04em;
+      }
+
+      .auth-subtitle {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .auth-form {
+        display: grid;
+        gap: 16px;
+      }
+
+      .auth-form input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(8, 13, 20, 0.86);
+        color: var(--text);
+        padding: 12px 14px;
+        outline: none;
+      }
+
+      .auth-form button {
+        border: none;
+        border-radius: 14px;
+        padding: 13px 18px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-2));
+        color: white;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .auth-error {
+        min-height: 20px;
+        margin-top: 12px;
+        color: #ff9ea5;
+        font-size: 0.88rem;
+      }
+
+      .logout-button {
+        border: 1px solid rgba(160, 178, 198, 0.2);
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 9px 12px;
+        cursor: pointer;
+      }
+
       .topbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 22px;
+      }
+
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .action-button {
+        border: 1px solid rgba(160, 178, 198, 0.2);
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+
+      .action-button.primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-2));
+        color: white;
+        border: none;
+        box-shadow: 0 18px 38px rgba(117, 185, 255, 0.25);
+      }
+
+      .action-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(117, 185, 255, 0.35);
       }
 
       .eyebrow {
@@ -225,6 +331,29 @@
       .button-row {
         display: flex;
         justify-content: flex-start;
+      }
+
+      .format-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0 2px 12px;
+      }
+
+      .format-button {
+        border: 1px solid rgba(160, 178, 198, 0.2);
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+
+      .format-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(117, 185, 255, 0.35);
       }
 
       .primary-button {
@@ -420,19 +549,62 @@
     </style>
   </head>
   <body>
-    <div class="page-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">NikitaNews</p>
-          <h1>Редактор публикаций | Beta</h1>
-        </div>
-        <div class="status-pill" id="post-count">0 постов</div>
-      </header>
+    <div id="auth-screen" class="auth-screen">
+      <div class="auth-card">
+        <p class="eyebrow">RadactPanel</p>
+        <h2>Вход в систему</h2>
+        <p class="auth-subtitle">Введите данные для доступа к панели</p>
 
-      <main class="layout">
-        <section class="panel editor-panel">
+        <form id="login-form" class="auth-form">
+          <input id="login-input" type="text" placeholder="Login" autocomplete="username" />
+          <input id="password-input" type="password" placeholder="Password" autocomplete="current-password" />
+          <button type="submit">Войти</button>
+        </form>
+
+        <div id="auth-error" class="auth-error"></div>
+      </div>
+    </div>
+
+    <div id="app-shell" class="page-shell hidden">
+      <section id="list-view">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">NikitaNews</p>
+            <h1>Редактор публикаций | Beta</h1>
+          </div>
+
+          <div class="toolbar-actions">
+            <button type="button" id="new-post-button" class="action-button primary">+ New Post</button>
+            <button type="button" id="refresh-posts-button" class="action-button">Обновить</button>
+            <button type="button" id="logout-button" class="logout-button">Выйти</button>
+            <div class="status-pill" id="post-count">0 постов</div>
+          </div>
+        </header>
+
+        <div class="panel list-panel">
           <div class="panel-header">
-            <h2>Создать пост</h2>
+            <h2>Посты</h2>
+            <span class="badge badge-info">Очередь</span>
+          </div>
+
+          <div id="posts-list" class="post-list"></div>
+        </div>
+      </section>
+
+      <section id="editor-view" class="hidden">
+        <header class="topbar">
+          <div class="toolbar-actions">
+            <button type="button" id="back-to-list" class="action-button">← Назад</button>
+            <div>
+              <p class="eyebrow">Редактор</p>
+              <h1 id="editor-title">Новый пост</h1>
+            </div>
+          </div>
+        </header>
+
+        <div class="panel editor-panel">
+          <div class="panel-header">
+            <h2 id="editor-panel-title">Создать пост</h2>
           </div>
 
           <form id="editor-form" class="editor-form">
@@ -476,35 +648,136 @@
 
             <label>
               <span>Содержимое</span>
-              <textarea id="content" rows="8" placeholder="Текст поста..."></textarea>
+              <div class="format-toolbar">
+                <button type="button" class="format-button" data-tag="b">Жирный</button>
+                <button type="button" class="format-button" data-tag="i">Курсив</button>
+                <button type="button" class="format-button" data-tag="u">Подчерк.</button>
+                <button type="button" class="format-button" data-tag="s">Зачерк.</button>
+                <button type="button" class="format-button" data-tag="blockquote">Цитата</button>
+                <button type="button" class="format-button" data-tag="code">Код</button>
+                <button type="button" class="format-button" data-tag="link">Ссылка</button>
+                <button type="button" class="format-button" data-tag="br">Новая строка</button>
+              </div>
+              <textarea id="content" rows="8" placeholder="Текст поста... Можно писать: <b>жирный</b>, <i>курсив</i>, <link:=https://example.com>, <blockquote>цитата</blockquote>"></textarea>
             </label>
 
             <div class="button-row">
               <button type="submit" class="primary-button">Сохранить и поставить в очередь</button>
             </div>
           </form>
-        </section>
-
-        <section class="panel list-panel">
-          <div class="panel-header">
-            <h2>Посты</h2>
-            <span class="badge badge-info">Очередь</span>
-          </div>
-
-          <div id="posts-list" class="post-list"></div>
-        </section>
-      </main>
+        </div>
+      </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+      const AUTH_LOGIN = 'RadactPanel';
+      const AUTH_PASSWORD = 'RPP9918_REACT';
       const supabaseUrl = 'https://kujrguralvgilvzpfqhw.supabase.co';
       const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1anJndXJhbHZnaWx2enBmcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNDM4MDUsImV4cCI6MjEwNTkxOTgwNX0.wLAeEzUonCDaZU0ZSAVq9VPAAIg71pWvMUFOvszyPKo';
       const telegramBotToken = '8597992351:AAFom4BfG_rYXMjzntbiox3eKzViuOBDEAI';
       const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
+      const authScreen = document.getElementById('auth-screen');
+      const appShell = document.getElementById('app-shell');
+      const loginForm = document.getElementById('login-form');
+      const loginInput = document.getElementById('login-input');
+      const passwordInput = document.getElementById('password-input');
+      const authError = document.getElementById('auth-error');
+      const logoutButton = document.getElementById('logout-button');
+      const newPostButton = document.getElementById('new-post-button');
+      const refreshPostsButton = document.getElementById('refresh-posts-button');
+      const backToListButton = document.getElementById('back-to-list');
+      const listView = document.getElementById('list-view');
+      const editorView = document.getElementById('editor-view');
+      const editorTitle = document.getElementById('editor-title');
+      const editorPanelTitle = document.getElementById('editor-panel-title');
       const postsList = document.getElementById('posts-list');
       const postCount = document.getElementById('post-count');
+      let currentEditingId = null;
+
+      function showListView() {
+        listView.classList.remove('hidden');
+        editorView.classList.add('hidden');
+      }
+
+      function showEditorView() {
+        listView.classList.add('hidden');
+        editorView.classList.remove('hidden');
+      }
+
+      function openNewPostEditor() {
+        currentEditingId = null;
+        editorTitle.textContent = 'Новый пост';
+        editorPanelTitle.textContent = 'Создать пост';
+        document.getElementById('editor-form').reset();
+        document.getElementById('type_name').value = 'Утренний';
+        showEditorView();
+      }
+
+      function openEditPostEditor(postId) {
+        currentEditingId = postId;
+        editorTitle.textContent = 'Редактировать пост';
+        editorPanelTitle.textContent = 'Редактирование';
+        showEditorView();
+
+        const post = (window.__postsCache || []).find((item) => Number(item.id) === Number(postId));
+        if (!post) return;
+
+        document.getElementById('type_name').value = post.type_name || 'Утренний';
+        document.getElementById('title').value = post.title || '';
+        document.getElementById('subtitle').value = post.subtitle || '';
+        document.getElementById('content').value = post.content || '';
+        document.getElementById('chat_ids').value = post.chat_ids || '';
+
+        if (post.scheduled_at) {
+          document.getElementById('send_date').value = formatMoscowInputDate(post.scheduled_at);
+          document.getElementById('send_time').value = formatMoscowInputTime(post.scheduled_at);
+        }
+      }
+
+      function applyAuthState() {
+        const isLogged = sessionStorage.getItem('radact-panel-auth') === 'true';
+        authScreen.classList.toggle('hidden', isLogged);
+        appShell.classList.toggle('hidden', !isLogged);
+
+        if (isLogged) {
+          loginInput.value = '';
+          passwordInput.value = '';
+          authError.textContent = '';
+        }
+      }
+
+      function handleLogin(event) {
+        event.preventDefault();
+
+        const login = loginInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (login === AUTH_LOGIN && password === AUTH_PASSWORD) {
+          sessionStorage.setItem('radact-panel-auth', 'true');
+          applyAuthState();
+          return;
+        }
+
+        authError.textContent = 'Неверный логин или пароль';
+        passwordInput.value = '';
+      }
+
+      function handleLogout() {
+        sessionStorage.removeItem('radact-panel-auth');
+        applyAuthState();
+      }
+
+      newPostButton.addEventListener('click', openNewPostEditor);
+      refreshPostsButton.addEventListener('click', loadPosts);
+      backToListButton.addEventListener('click', () => {
+        showListView();
+      });
+      loginForm.addEventListener('submit', handleLogin);
+      logoutButton.addEventListener('click', handleLogout);
+      applyAuthState();
+      showListView();
 
       function parseChatIds(raw) {
         return String(raw || '')
@@ -513,19 +786,96 @@
           .filter(Boolean);
       }
 
+      function insertHtmlTag(tag, textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.slice(start, end) || 'текст';
+
+        if (tag === 'br') {
+          const value = textarea.value.slice(0, start) + '<br>' + textarea.value.slice(end);
+          textarea.value = value;
+          textarea.focus();
+          const cursorPos = start + 4;
+          textarea.setSelectionRange(cursorPos, cursorPos);
+          return;
+        }
+
+        if (tag === 'link') {
+          const linkValue = selected || 'https://example.com';
+          const result = `<a href="${linkValue}">${selected || 'ссылка'}</a>`;
+          const value = textarea.value.slice(0, start) + result + textarea.value.slice(end);
+          textarea.value = value;
+          textarea.focus();
+          const cursorPos = start + result.length;
+          textarea.setSelectionRange(cursorPos, cursorPos);
+          return;
+        }
+
+        const wrapper = tag === 'blockquote'
+          ? '<blockquote>' + selected + '</blockquote>'
+          : `<${tag}>${selected}</${tag}>`;
+
+        const nextValue = textarea.value.slice(0, start) + wrapper + textarea.value.slice(end);
+        textarea.value = nextValue;
+        textarea.focus();
+
+        const cursorPos = start + wrapper.length;
+        textarea.setSelectionRange(cursorPos, cursorPos);
+      }
+
+      document.querySelectorAll('.format-button').forEach((button) => {
+        button.addEventListener('click', () => {
+          const textarea = document.getElementById('content');
+          if (!textarea) return;
+          insertHtmlTag(button.dataset.tag, textarea);
+        });
+      });
+
+      const contentTextarea = document.getElementById('content');
+      if (contentTextarea) {
+        contentTextarea.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const start = contentTextarea.selectionStart;
+            const end = contentTextarea.selectionEnd;
+            const value = contentTextarea.value.slice(0, start) + '<br>' + contentTextarea.value.slice(end);
+            contentTextarea.value = value;
+            contentTextarea.setSelectionRange(start + 4, start + 4);
+          }
+        });
+      }
+
+      function normalizeRichText(rawText) {
+        if (!rawText) return '';
+
+        let value = String(rawText)
+          .replace(/\r\n/g, '\n')
+          .replace(/\n/g, '<br>');
+
+        value = value.replace(/<link:\s*=?\s*([^>]+)>/gi, (_, url) => {
+          const cleanUrl = String(url).trim();
+          return `<a href="${cleanUrl}">${cleanUrl}</a>`;
+        });
+
+        return value;
+      }
+
       function buildTelegramText(post) {
-        const lines = [post.title || 'Без заголовка'];
+        const blocks = [];
+
+        if (post.title) {
+          blocks.push(post.title);
+        }
 
         if (post.subtitle) {
-          lines.push(post.subtitle);
+          blocks.push(post.subtitle);
         }
 
         if (post.content) {
-          lines.push('');
-          lines.push(post.content);
+          blocks.push(normalizeRichText(post.content));
         }
 
-        return lines.join('\n');
+        return blocks.join('\n\n');
       }
 
       async function sendTelegramMessage(post) {
@@ -548,6 +898,7 @@
             body: JSON.stringify({
               chat_id: Number(chatId) || chatId,
               text: payloadText,
+              parse_mode: 'HTML',
               disable_web_page_preview: true,
             }),
           });
@@ -675,6 +1026,7 @@
       }
 
       function renderPosts(posts) {
+        window.__postsCache = posts || [];
         postCount.textContent = posts.length + ' постов';
 
         if (!posts.length) {
@@ -692,7 +1044,7 @@
             <h3>${post.title || 'Без заголовка'}</h3>
             <p class="subtitle">${post.subtitle || 'Без подзаголовка'}</p>
             <p class="meta">${post.scheduled_at ? formatMoscowDate(post.scheduled_at) : 'Время не указано'} · ${post.chat_ids || 'Чаты не указаны'}</p>
-            <p class="preview">${post.content || 'Пустое содержимое'}</p>
+            <div class="preview">${post.content || 'Пустое содержимое'}</div>
 
             <div class="actions">
               <button class="mini-button send" type="button" data-id="${post.id}" data-action="send">Отправить сейчас</button>
@@ -753,27 +1105,7 @@
             }
 
             if (action === 'edit') {
-              if (!supabaseClient) {
-                showError('Supabase не подключён');
-                return;
-              }
-
-              const { data, error } = await supabaseClient.from('posts').select('*').eq('id', id).single();
-              if (error || !data) {
-                showError('Пост не найден');
-                return;
-              }
-
-              document.getElementById('type_name').value = data.type_name || 'Утренний';
-              document.getElementById('title').value = data.title || '';
-              document.getElementById('subtitle').value = data.subtitle || '';
-              document.getElementById('content').value = data.content || '';
-              document.getElementById('chat_ids').value = data.chat_ids || '';
-
-              if (data.scheduled_at) {
-                document.getElementById('send_date').value = formatMoscowInputDate(data.scheduled_at);
-                document.getElementById('send_time').value = formatMoscowInputTime(data.scheduled_at);
-              }
+              openEditPostEditor(id);
             }
           });
         });
@@ -830,7 +1162,15 @@
               : null
         };
 
-        const { error } = await supabaseClient.from('posts').insert([payload]);
+        let error;
+
+        if (currentEditingId) {
+          const result = await supabaseClient.from('posts').update(payload).eq('id', currentEditingId);
+          error = result.error;
+        } else {
+          const result = await supabaseClient.from('posts').insert([payload]);
+          error = result.error;
+        }
 
         if (error) {
           showError('Ошибка сохранения в Supabase: ' + error.message);
@@ -838,6 +1178,8 @@
         }
 
         event.target.reset();
+        currentEditingId = null;
+        showListView();
         await loadPosts();
         await processDuePosts();
       });
